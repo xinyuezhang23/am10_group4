@@ -1,0 +1,271 @@
+---
+title: "netflix"
+author: "Xinyue Zhang"
+date: "11/28/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(skimr)
+library(knitr)
+library(tm)   
+library(wordcloud)
+library(wordcloud2)
+
+knitr::opts_chunk$set(
+  tidy = FALSE,   # display code as typed
+  size = "small") # slightly smaller font for code
+```
+
+```{r}
+#load the data
+
+data <- read_csv("D:/London Business School/AM10 Data Visualization/am10/group project/data/netflix_titles.csv") # reads data into a tibble (dataframe) ready for Tidyverse
+data1 <- read_csv("D:/London Business School/AM10 Data Visualization/am10/group project/data/amazon_prime_titles.csv") 
+#View(data)
+#table(data$label)
+N<- nrow(data)
+skimr:: skim(data$title)# no missing value
+skimr::skim(data1$title)
+```
+
+
+```{r}
+corp_title<- Corpus(VectorSource(data$title))
+corp_title1<- Corpus(VectorSource(data1$title))
+```
+
+```{r}
+DTM_title<-DocumentTermMatrix(corp_title, control = list(
+            tolower = TRUE,
+            removeNumbers = TRUE,
+            stopwords = TRUE,
+            removePunctuation = TRUE,
+            stripWhitespace = TRUE)
+)
+print(DTM_title)
+dim(DTM_title)
+inspect(DTM_title[, 1:5])
+
+
+DTM_title1<-DocumentTermMatrix(corp_title1, control = list(
+            tolower = TRUE,
+            removeNumbers = TRUE,
+            stopwords = TRUE,
+            removePunctuation = TRUE,
+            stripWhitespace = TRUE)
+)
+print(DTM_title1)
+dim(DTM_title1)
+inspect(DTM_title1[, 1:5])
+```
+```{r}
+# Convert to tibble (tidyverse suitable format)
+M <- as.matrix(DTM_title)
+# docs <- seq(1, 747, 1) # from=x, to=y, by=z i.e. in steps of 1
+# M <- cbind(docs, m) # bind column called year, and other columns in matrix into a single matrix M
+DTM_tbl <- as_tibble(M) # transform matrix into tibble (which is what tidyverse works with)
+DTM_tbl_tidy <- pivot_longer(DTM_tbl, cols = !year, names_to = "word", values_to = "wordCount")
+
+
+M1 <- as.matrix(DTM_title1)
+# docs <- seq(1, 747, 1) # from=x, to=y, by=z i.e. in steps of 1
+# M <- cbind(docs, m) # bind column called year, and other columns in matrix into a single matrix M
+DTM_tbl1 <- as_tibble(M1) # transform matrix into tibble (which is what tidyverse works with)
+DTM_tbl_tidy1 <- pivot_longer(DTM_tbl1,cols = !year, names_to = "word", values_to = "wordCount")
+```
+
+```{r}
+wordCountDoc <- DTM_tbl_tidy %>%  
+        group_by(word) %>% 
+        summarise(total = sum(wordCount)) %>% 
+        arrange(desc(total)) 
+
+wordCountDoc1 <- DTM_tbl_tidy1 %>%  
+        group_by(word) %>% 
+        summarise(total = sum(wordCount)) %>% 
+        arrange(desc(total)) 
+
+print(wordCountDoc)
+print(wordCountDoc1)
+```
+```{r}
+#netflix
+wordcloud(words = wordCountDoc$word, # names(freq) 
+          freq = wordCountDoc$total, # freq
+          max.words = 100,
+          scale = c(3, 0.5), 
+          random.order = FALSE,
+          rot.per = 0.35,
+          colors = brewer.pal(8, "YlOrRd"),
+          backgroundColor = "black" )
+#amazon prime
+wordcloud(words = wordCountDoc1$word, # names(freq) 
+          freq = wordCountDoc1$total, # freq
+          max.words = 80,
+          scale = c(3, 0.5), 
+          random.order = FALSE,
+          rot.per = 0.35,
+          colors = brewer.pal(8, "RdBu"))
+
+wordcloud2(wordCountDoc, size = 0.7, shape = 'circle',backgroundColor = "black")
+```
+
+```{r}
+wordcloud2(wordCountDoc, figPath = "~desktop/netflix.png", size = 1.5, color = "skyblue", backgroundColor="black")
+```
+
+
+```{r}
+wordcloud2( wordCountDoc,shape = "circle" ,size=0.5,color = "random-light", backgroundColor = "black")
+
+wordcloud2( wordCountDoc1,shape= "circle" ,size=0.5,color = "random-light", backgroundColor = "black")
+```
+```{r}
+library(wordcloud2) 
+wordcloud2(wordCountDoc, size = 0.7, shape = 'star')
+letterCloud(wordCountDoc, word = "PEACE", color="white", backgroundColor="pink")
+letterCloud( wordCountDoc, word = "N")
+# library(devtools)
+# devtools::install_github("lchiffon/wordcloud2")
+# letterCloud(demoFreq,"R")
+```
+OK then let's see the description for these two platforms.
+
+```{r}
+#for Netflix
+corp_des<- Corpus(VectorSource(data$description))
+DTM_des<-DocumentTermMatrix(corp_des, control = list(
+            tolower = TRUE,
+            removeNumbers = TRUE,
+            stopwords = TRUE,
+            removePunctuation = TRUE,
+            stripWhitespace = TRUE)
+)
+print(DTM_des)
+dim(DTM_des)
+inspect(DTM_des[, 1:5])
+
+M_des <- as.matrix(DTM_des)
+# docs <- seq(1, 747, 1) # from=x, to=y, by=z i.e. in steps of 1
+# M <- cbind(docs, m) # bind column called year, and other columns in matrix into a single matrix M
+DTM_tbl_des <- as_tibble(M_des) # transform matrix into tibble (which is what tidyverse works with)
+DTM_tbl_tidy_des <- pivot_longer(DTM_tbl_des, cols = !year, names_to = "word", values_to = "wordCount")
+
+wordCountDoc_des <- DTM_tbl_tidy_des %>%  
+        group_by(word) %>% 
+        summarise(total = sum(wordCount)) %>% 
+        arrange(desc(total)) %>% 
+        top_n(100)
+        
+
+wordcloud2( wordCountDoc_des,shape = "diamond" ,size=0.4,color = "random-light", backgroundColor = "black")
+```
+```{r}
+#for Amazon prime
+data1<- sample_n(data1,4000)
+
+
+corp_des1<- Corpus(VectorSource(data1$description))
+DTM_des1<-DocumentTermMatrix(corp_des1, control = list(
+            tolower = TRUE,
+            removeNumbers = TRUE,
+            stopwords = TRUE,
+            removePunctuation = TRUE,
+            stripWhitespace = TRUE)
+)
+print(DTM_des1)
+dim(DTM_des1)
+inspect(DTM_des1[, 1:5])
+
+M_des1 <- as.matrix(DTM_des1)
+# docs <- seq(1, 747, 1) # from=x, to=y, by=z i.e. in steps of 1
+# M <- cbind(docs, m) # bind column called year, and other columns in matrix into a single matrix M
+DTM_tbl_des1 <- as_tibble(M_des1) # transform matrix into tibble (which is what tidyverse works with)
+DTM_tbl_tidy_des1 <- pivot_longer(DTM_tbl_des1, cols = !year, names_to = "word", values_to = "wordCount")
+
+wordCountDoc_des1 <- DTM_tbl_tidy_des1 %>%  
+        group_by(word) %>% 
+        summarise(total = sum(wordCount)) %>% 
+        arrange(desc(total)) %>% 
+        top_n(100)
+
+wordcloud2( wordCountDoc_des1,shape = "diamond" ,size=0.4,color = "random-light", backgroundColor = "black")
+```
+
+Rating in different Indian and American shows
+```{r}
+show_rating <- data %>% 
+  filter(country %in% c("United States","India")) %>% 
+  group_by(country, type,rating) %>%
+  summarise(n=n())
+
+show_rating_per<-show_rating%>% 
+  group_by(country,type) %>% 
+  mutate(percent= round(n*100/sum(n),2)) %>% 
+  slice_max(order_by = percent,n=5) # save top 5 ratings for each country
+
+show_rating_per %>% 
+  filter(country =="India",type=="Movie") %>% 
+ggplot(aes(x=percent,y=fct_reorder(rating,n) ))+
+  geom_col()+
+  #facet_wrap(~country)+
+  geom_text(aes(label = paste(percent,"%") ), hjust=0.8, size= 3)+
+  labs(title="Top 5 ratings for Indian movies on netflix")+
+  theme_bw()
+
+show_rating_per %>% 
+  filter(country =="United States",type=="Movie") %>% 
+ggplot(aes(x=percent,y=fct_reorder(rating,n) ))+
+  geom_col()+
+  #facet_wrap(~country)+
+  geom_text(aes(label = paste(percent,"%") ),hjust=1, size= 3)+
+  labs(title="Top 5 ratings for American movies on netflix")+
+  theme_bw()
+
+data %>% 
+  filter(type=="Movie") %>% 
+  filter(country %in% c("United States","India")) %>% 
+  group_by(country) %>% 
+  ggplot(aes(y=rating))+
+  geom_bar()+
+  facet_wrap(~ country)
+  
+data %>% 
+  filter(type=="TV Show") %>% 
+  filter(country %in% c("United States","India")) %>% 
+  ggplot(aes(y=rating))+
+  geom_bar()+
+  facet_wrap(~ country)
+
+
+data %>%
+  select(type) %>% 
+
+  
+```
+```{r}
+rating_data<-read.csv("D:/London Business School/AM10 Data Visualization/am10/group project/data/merged_rating.csv")
+skim(rating_data)
+glimpse(rating_data)
+rating_data1<- rating_data %>% select(type,title,genre_new,avg_vote,platform)
+
+genre_rating<- rating_data %>% group_by(genre_new,platform) %>% 
+  summarise(vote=mean(avg_vote))
+```
+```{r}
+library(XML)
+library(reshape2)
+library(ggplot2)
+library(plyr)
+ggplot(genre_rating, aes( y = genre_new, fill = platform)) + 
+  geom_bar(aes(x= vote,y=fct_reorder(genre_new,vote) ),data = subset(genre_rating, platform == "amazon"), stat = "identity")+ 
+  geom_bar(aes(x = -vote),data = subset(genre_rating,platform == "netflix"), stat = "identity") +
+  #coord_flip() + 
+  scale_fill_brewer(palette = "Set1") + 
+  theme_bw()
+```
+
+
