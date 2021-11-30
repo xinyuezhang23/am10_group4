@@ -1,0 +1,178 @@
+---
+title: "Viz"
+author: "Nikos Panayotou"
+date: "28/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyr)
+library(tidyverse)
+library(purrr)
+library("viridis")  
+library(lubridate)
+library(ggthemes)
+
+```
+
+
+
+```{r, load data set}
+
+df <- read.csv("netflix_titles.csv")
+
+
+
+```
+
+```{r, remove empty, make into list and then into df}
+
+df <- df %>% filter(cast != "")
+list <- list(df$cast)
+
+test2 <-str_split(list[[1]], ", ")
+test2[1]
+
+pame <- flatten(test2)
+
+edw <- data.frame(Reduce(rbind, pame))
+colnames(edw)
+names(edw)[1] <- "actor"
+
+
+```
+
+
+```{r, count actors}
+
+poso <- edw %>% group_by(actor) %>% summarise(count = n()) %>% arrange(-count)
+
+final <- poso[1:15,]
+final<-final %>% arrange(count)
+final %>% mutate(actor = fct_inorder(actor)) %>% 
+ggplot(aes(x=count, y=actor))+
+  geom_col()
+
+
+
+```
+```{r, international movies adn series}
+#INTERNATIONAL MEANS NOT ENGLISH SPEAKING
+
+df <-df %>% mutate(inter = case_when( grepl("International", listed_in) ~ TRUE,
+                                     TRUE ~ FALSE))
+#df %>% group_by(inter) %>% summarise(count = n())
+
+inter <- df %>% filter(inter == TRUE) %>% 
+  mutate(da_added = lubridate::mdy(date_added), year = year(da_added)) %>% 
+  group_by(year,type) %>% summarise(count = n())
+
+ggplot(inter)+
+  geom_line(aes(y=count, x=year, group=type, color=type),lwd=1.5)+
+  labs(title = 'International productions peaking in 2018' ,
+       subtitle = 'International Movies and Series Counts',
+       x = 'Year Added')+
+  theme_bw()+
+  theme(axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        plot.title = element_text(colour = "black"),
+        plot.subtitle = element_text(colour = "black"))+ #find color
+  scale_color_manual( values = c("black","red"))+
+   ylim(0, 1500)
+
+
+
+
+```
+
+```{r, HEATMAP}
+
+heat <- df %>% mutate(date_added = lubridate::mdy(date_added),
+                      month = month(date_added),
+                      year = year(date_added)) %>% 
+  group_by(month, year) %>% summarise(count = n()) %>% arrange(-count)
+
+this <- heat %>% pivot_wider(names_from = year, values_from = count)
+this <-this %>% arrange(month)
+this<- this[-c(13),-c(1,10)] 
+this <- this[, c(11,13,14,8,12,10,9,7,6,5,4,1,3,2)]
+this <-this[, -c(1:7)]
+this <- as.matrix(this)
+heatmap.2(this, Rowv=NA, Colv=NA, col =  plasma(250), scale="none", density.info = "none", xlab = "Year", ylab = "Month",trace="none", main = "Heatmap of new titles count")
+
+library(gplots)
+```
+
+```{r, ratings data set start}
+df2 <-read.csv("merged_rating.csv")
+
+
+df2<-df2 %>% mutate(release_year = as.numeric(release_year),
+                    decade = case_when(release_year >= 1920 & release_year < 1930 ~ "1920s",
+                                       release_year >= 1930 & release_year < 1940 ~ "1930s",
+                                       release_year >= 1940 & release_year < 1950 ~ "1940s",
+                                       release_year >= 1950 & release_year < 1960 ~ "1950s",
+                                       release_year >= 1960 & release_year < 1970 ~ "1960s",
+                                       release_year >= 1970 & release_year < 1980 ~ "1970s",
+                                       release_year >= 1980 & release_year < 1990 ~ "1980s",
+                                       release_year >= 1990 & release_year < 2000 ~ "1990s",
+                                       release_year >= 2000 & release_year < 2010 ~ "2000s",
+                                       release_year >= 2010 & release_year < 2020 ~ "2010s",
+                                       release_year >= 2020 & release_year < 2030 ~ "2020s"),
+                    decade = as.factor(decade),
+                    decade = ordered(decade, levels = c("1920s","1930s","1940s","1950s","1960s","1970s","1980s","1990s","2000s","2010s","2020s")))
+
+violi <- df2 %>% 
+  group_by(decade) %>%
+   ggplot(aes(x = decade, y = mean_vote, fill = platform)) +
+  geom_violin() +
+  geom_boxplot(width=0.1)+
+  theme_classic()+
+  scale_fill_manual(values=c("slateblue1", "red"))+
+   labs(x="Decade", 
+       y="Ratings",
+       title="Average Rating per Decade (both platforms)",
+       subtitle="Mean Decreases but Deviation Increases")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
+  guides(fill=FALSE)+
+  facet_wrap(~platform)
+  NULL
+  
+violi
+
+violi_netflix <- df2 %>% filter(platform == "netflix") %>% 
+  group_by(decade) %>%
+   ggplot(aes(x = decade, y = mean_vote)) +
+  geom_violin(fill= "red") +
+  geom_boxplot(width=0.1,fill= "red")+
+  theme_classic()+
+   labs(x="Decade", 
+       y="Ratings",
+       title="Average Rating per Decade, Netflix",
+       subtitle="Mean Decreases but Deviation Increases")+
+ # theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
+  guides(fill=FALSE)+
+  NULL
+  
+violi_netflix
+
+violi_amazon <- df2 %>% filter(platform == "amazon") %>% 
+  group_by(decade) %>%
+   ggplot(aes(x = decade, y = mean_vote)) +
+  geom_violin(fill= "slateblue1") +
+  geom_boxplot(width=0.1,fill= "slateblue1")+
+  theme_classic()+
+   labs(x="Decade", 
+       y="Ratings",
+       title="Average Rating per Decade, Amazon Prime",
+       subtitle="Mean Decreases but Deviation Increases")+
+ # theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
+  guides(fill=FALSE)+
+  NULL
+  
+violi_amazon
+
+```
+
