@@ -1,0 +1,75 @@
+---
+title: "Regression Model"
+author: "Group 4"
+date: "30/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load-libraries, echo=FALSE}
+library(tidyverse)
+library(janitor) 
+library(skimr)
+```
+
+
+```{r}
+data <- read_csv("netflix_rating.csv")
+```
+
+```{r}
+data$rating <- as.factor(data$rating)
+data$genre_new <- as.factor(data$genre_new)
+data$movie_duration <- parse_number(data$duration.x)
+glimpse(data)
+```
+
+
+
+```{r}
+ggplot(data, aes(x = avg_vote)) + 
+  geom_histogram() + 
+  labs( title = "Average movie rating has an approximately normal distribution", x = "", y = "" ) +
+  theme_bw() +
+  theme(plot.title = element_text(size = 20, color = "white"))
+```
+```{r}
+data_v1 <- data %>% 
+  mutate(
+    genre = genre_new
+  )
+```
+
+
+```{r}
+model <- lm(avg_vote ~ release_year + platform + genre + movie_duration, data = data_v1)
+summary(model)
+```
+
+
+
+
+
+
+```{r}
+# library(ggridges)
+# # 
+# # l2 <- c("subcompact","midsize","compact",
+# # "2seater","minivan","pickup","suv")
+# 
+# data %>%
+#   filter(genre_new %in% c("Drama", "Crime", "Action", "Comedy", "Horror")) %>% 
+# mutate(class = factor(genre_new)) %>%
+# ggplot(aes(x = avg_vote, y = genre_new, fill = genre_new))+
+# stat_density_ridges(quantile_lines = TRUE, quantiles = 2, alpha = 0.4) +
+# theme_minimal() +
+# theme(legend.position = "none")
+```
+
+
+
+
